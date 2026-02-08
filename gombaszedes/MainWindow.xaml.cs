@@ -87,21 +87,20 @@ namespace gombaszedes
                         contentGrid.Children.Add(tb);
                     }
 
-
-                    int mIndex = -1;
+                    bool isThereMushroom = false;
                     if(mushroomPath != null)
                     {
-                        for(int i = 0; i < mushroomPath.Count; i++)
+                        foreach(Point p in mushroomPath)
                         {
-                            if (mushroomPath[i].X == x && mushroomPath[i].Y == y)
+                            if (p.X == x && p.Y == y)
                             {
-                                mIndex = i;
+                                isThereMushroom = true;
                                 break;
                             }
                         }
                     }
 
-                    if(mIndex != -1 && mIndex >= currentTargetIndex)
+                    if(isThereMushroom)
                     {
                         Image img = new Image();
                         img.Source = imgMushroom;
@@ -121,40 +120,43 @@ namespace gombaszedes
             if (currentTargetIndex >= mushroomPath.Count) return;
 
             Button clickedCell = (Button)sender;
+            dynamic tag = clickedCell.Tag;
 
-            dynamic p = clickedCell.Tag;
+            int targetX = (int)tag.X;
+            int targetY = (int)tag.Y;
 
-            //if(isValidMove(currentX, currentY, targetX, targetY))
-            //{
-                //if(currentX != targetX || currentY != targetY)
-                //{
-                //    currentX = targetX;
-                 //   currentY = targetY;
-                //    DrawBoard();
-                //}
-            //}
+            Point? talaltGomba = null;
 
-            Point target = mushroomPath[currentTargetIndex];
-
-            if (p.X == target.X && p.Y == target.Y)
+            for (int  i = 0; i < mushroomPath.Count; i++)
             {
-                currentX = (int)p.X;
-                currentY = (int)p.Y;
-                currentTargetIndex++;
+                if (mushroomPath[i].X == targetX && mushroomPath[i].Y == targetY)
+                {
+                    talaltGomba = mushroomPath[i];
+                    break;
+                }
+            }
+
+            if (isValidMove(currentX, currentY, targetX, targetY) && talaltGomba != null)
+            {
+                currentX = targetX;
+                currentY = targetY;
+
+                mushroomPath.Remove((Point)talaltGomba);
                 StatusImage.Source = imgHappy;
 
-                if (currentTargetIndex >= mushroomPath.Count)
-                {
-                    InfoText.Text = "GYŐZELEM!";
-                }
-
                 DrawBoard();
+                if(mushroomPath.Count == 0)
+                {
+                    MessageBox.Show("GYŐZELEM! Minden gombát felszedtél!");
+                }
             }
             else
             {
-
                 StatusImage.Source = imgSad;
             }
+
+
+
 
         }
 
@@ -210,9 +212,6 @@ namespace gombaszedes
             }
             return path;
         }
-
-
-
 
         //Bastya
         private bool isValidMove(int x1, int y1, int x2, int y2)
