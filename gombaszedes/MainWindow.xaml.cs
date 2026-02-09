@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Security.Policy;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -29,6 +30,7 @@ namespace gombaszedes
         BitmapImage imgHappy = new BitmapImage(new Uri("kepek/happy.png", UriKind.Relative));
         BitmapImage imgSad = new BitmapImage(new Uri("kepek/sad.png", UriKind.Relative));
 
+        string currentPiece = "rook";
 
         public MainWindow()
         {
@@ -78,7 +80,20 @@ namespace gombaszedes
                     if(x == currentX && y == currentY)
                     {
                         TextBlock tb = new TextBlock();
-                        tb.Text = "♖";
+
+                        string pieceChar = "♖";
+
+                        if (currentPiece == "rook")
+                            pieceChar = "♖";
+                        else if (currentPiece == "bishop")
+                            pieceChar = "♗";
+                        else if (currentPiece == "queen")
+                            pieceChar = "♕";
+                        else if (currentPiece == "knight")
+                            pieceChar = "♘";
+
+                        tb.Text = pieceChar;
+
                         tb.FontSize = 40;
                         tb.HorizontalAlignment = HorizontalAlignment.Center;
                         tb.VerticalAlignment = VerticalAlignment.Center;
@@ -118,6 +133,7 @@ namespace gombaszedes
         private void handleCellClick(object sender, RoutedEventArgs e)
         {
             if (currentTargetIndex >= mushroomPath.Count) return;
+            StatusImage.Source = imgHappy;
 
             Button clickedCell = (Button)sender;
             dynamic tag = clickedCell.Tag;
@@ -125,39 +141,50 @@ namespace gombaszedes
             int targetX = (int)tag.X;
             int targetY = (int)tag.Y;
 
-            Point? talaltGomba = null;
+            int mushroomIndex = -1;
 
             for (int  i = 0; i < mushroomPath.Count; i++)
             {
                 if (mushroomPath[i].X == targetX && mushroomPath[i].Y == targetY)
                 {
-                    talaltGomba = mushroomPath[i];
+                    mushroomIndex =  i;
                     break;
                 }
             }
 
-            if (isValidMove(currentX, currentY, targetX, targetY) && talaltGomba != null)
-            {
-                currentX = targetX;
-                currentY = targetY;
-
-                mushroomPath.Remove((Point)talaltGomba);
-                StatusImage.Source = imgHappy;
-
-                DrawBoard();
-                if(mushroomPath.Count == 0)
-                {
-                    MessageBox.Show("GYŐZELEM! Minden gombát felszedtél!");
-                }
-            }
-            else
+            if (mushroomIndex == -1 || !isValidMove(currentX, currentY, targetX, targetY))
             {
                 StatusImage.Source = imgSad;
+                return;
             }
 
+            List<Point> remaining = new List<Point>();
+            for (int i = 0; i < mushroomPath.Count; i++)
+            {
+                if (i != mushroomIndex)
+                    remaining.Add(mushroomPath[i]);
+            }
 
+            int newX = targetX;
+            int newY = targetY;
 
+            bool okMove = CanCollectAll(newX, newY, remaining);
 
+            if (!okMove)
+            {
+                StatusImage.Source = imgSad;
+                return;
+            }
+
+            currentX = newX;
+            currentY = newY;
+            mushroomPath.RemoveAt(mushroomIndex);
+            DrawBoard();
+
+            if (mushroomPath.Count == 0)
+            {
+                MessageBox.Show("Minden gombát felszedtél.");
+            }
         }
 
         private List<Point> generatePath(int startX,  int startY, int lenght)
@@ -213,12 +240,90 @@ namespace gombaszedes
             return path;
         }
 
-        //Bastya
-        private bool isValidMove(int x1, int y1, int x2, int y2)
+
+        private bool CanCollectAll(int fromX, int fromY, List<Point> remaining)
         {
-            return (x1 == x2) || (y1 == y2);
+            if (remaining.Count == 0) return true;
+
+            for(int i  = 0; i < remaining.Count; i++)
+            {
+                Point target = remaining[i];
+
+                if(isValidMove(fromX, fromY, (int)target.X, (int)target.Y))
+                {
+                    List<Point> nextReamining = new List<Point>();
+                    for(int j = 0; j < remaining.Count; j++)
+                    {
+                        if(j != i)
+                        {
+                            nextReamining.Add(remaining[j]);
+                        }
+                    }
+
+                    if(CanCollectAll((int)target.X, (int)target.Y, nextReamining))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
 
+        private bool isValidMove(int x1, int y1, int x2, int y2)
+        {
+            int dx = Math.Abs(x1 - x2);
+            int dy = Math.Abs(y1 - y2);
 
+            if (x1 == x2 && y1 == y2)
+                return false;
+
+            if (currentPiece == "rook")
+            {
+                // Bástya
+                return (x1 == x2) || (y1 == y2);
+            }
+            else if (currentPiece == "bishop")
+            {
+                // Futó
+                return dx == dy;
+            }
+            else if (currentPiece == "queen")
+            {
+                // Vezér
+                bool rookMove = (x1 == x2) || (y1 == y2);
+                bool bishopMove = (dx == dy);
+                return rookMove || bishopMove;
+            }
+            else if (currentPiece == "knight")
+            {
+                // Huszár
+                return (dx == 1 && dy == 2) || (dx == 2 && dy == 1);
+            }
+            return false;
+        }
+
+        private void Rook_Click(object sender, RoutedEventArgs e)
+        {
+            currentPiece = "rook";
+            startNewGame();
+        }
+
+        private void Bishop_Click(object sender, RoutedEventArgs e)
+        {
+            currentPiece = "bishop";
+            startNewGame();
+        }
+
+        private void Queen_Click(object sender, RoutedEventArgs e)
+        {
+            currentPiece = "queen";
+            startNewGame();
+        }
+
+        private void Knight_Click(object sender, RoutedEventArgs e)
+        {
+            currentPiece = "knight";
+            startNewGame();
+        }
     }
 }
